@@ -1,0 +1,24 @@
+{
+  "name": "loopslicer",
+  "version": "0.0.1",
+  "description": "Detect and slice loop of audio files",
+  "main": "loopslicer.js",
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "tsc --build --clean"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/idzuna/loopslicer.git"
+  },
+  "author": "idzuna",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/idzuna/loopslicer/issues"
+  },
+  "homepage": "https://github.com/idzuna/loopslicer#readme",
+  "devDependencies": {
+    "@types/node": "^8.0.14",
+    "typescript": "^3.2.2"
+  }
+}

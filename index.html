@@ -1,0 +1,142 @@
+﻿<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <title>LoopSlicer - サウンドトラックのループを半自動検出して切り出すやつ</title>
+  <script src="loopslicer.js"></script>
+  <style>
+    .hint {
+      color: gray;
+      font-size: .9em;
+    }
+    .alert {
+      background-color: hotpink;
+      font-weight: bold;
+    }
+    .window {
+      width: 100%;
+      border: 1px solid gray;
+      overflow-x: scroll;
+    }
+    a {
+      color: blue;
+    }
+  </style>
+</head>
+<body>
+  <p><a href="http://www.iridoatelier.net/">トップページへ</a></p>
+  <h1>LoopSlicer - サウンドトラックのループを半自動検出して切り出すやつ</h1>
+  <hr />
+  <div id="step0">
+    <p><a href="#" style="font-size:2em" id="step0_start">はじめる</a> もしくは音声ファイルをこのページにドラッグしてください．</p>
+    <p>※このツールはブラウザ単独で動作します．音声データがサーバーに送られることはありません．</p>
+    <div class="tweetbutton"><a href="https://twitter.com/share" class="twitter-share-button" data-url="http://www.iridoatelier.net/apps/loopslicer/" data-via="idzuna_tan" data-text="LoopSlicer - サウンドトラックのループを半自動検出して切り出すやつ">Tweet</a></div>
+    <hr />
+    <h2>動作環境</h2>
+    <ul>
+      <li>PC 推奨です．スマートフォンや非力なタブレットでは動作しないか，動作が遅いです．</li>
+      <li>Firefox, Chrome, Edge で動作確認しています．Internet Explorer では動作しません．</li>
+    </ul>
+    <h2>裏技</h2>
+    <ul>
+      <li>F12 キーでコンソールを開いて g_config* という変数を書き換えると，ループ検出のパラメータを変更できます．うまく検出できないときにお試しください．</li>
+    </ul>
+    <h2>更新履歴</h2>
+    <h3>2020/04/30</h3>
+    <ul>
+      <li>ステップを戻ったときの挙動を修正しました</li>
+      <li>どのステップにいてもファイルをドラッグするとステップ 1 に戻るようにしました</li>
+      <li>一括ダウンロードを追加しました</li>
+    </ul>
+    <h3>2020/04/29</h3>
+    <ul>
+      <li>公開しました</li>
+    </ul>
+  </div>
+  <div id="step1" style="display:none">
+    <h2>ステップ 1/5: 音声読み込み</h2>
+    <p>音声ファイルをこのページにドラッグアンドドロップしてください<span class="hint">（WAV 形式以外のファイルは元の形式にかかわらずサンプリング周波数 44100Hz に変換されます）</span></p>
+    <div class="window">
+      <canvas id="step1_wave" height="128"></canvas>
+    </div>
+    <div id="step1_filename"></div>
+    <div id="step1_type"></div>
+    <div id="step1_alert" class="alert" style="display:none">オーディオデータの読み込みに失敗しました</div>
+    <div id="step1_control">
+      <input type="button" id="step1_play" value="再生" />
+      <input type="button" id="step1_stop" value="停止" />
+    </div>
+    <p style="display:none"><a href="#" id="step1_test">書き出しテスト</a>：読み込んだデータをそのまま WAV ファイルとして書き出します．読み書き時に誤差や劣化が生じていないことを確認したいときに使用してください（デバッグもしくは潔癖症の人向け）</p>
+    <hr />
+  </div>
+  <div id="step2" style="display:none">
+    <h2>ステップ 2/5: ループ開始位置指定</h2>
+    <p>波形上をクリックまたは時刻を入力してループの開始位置を指定してください</p>
+    <div class="window">
+      <canvas id="step2_wave" height="128"></canvas>
+    </div>
+    <div id="step2_control">
+      ループ開始: <input type="text" id="step2_loopbegin" value="0" /> 秒<br />
+      <input type="button" id="step2_play" value="再生" />
+      <input type="button" id="step2_stop" value="停止" />
+    </div>
+    <p class="hint">ヒント: 無音や似た個所が多いところを避けたほうがループ自動検出がうまくいきやすいようです．実際の切り出し位置は後のステップで調整できるので，ここではループ自動検出がうまくいきそうな位置を選んでください</p>
+    <hr />
+  </div>
+  <div id="step3" style="display:none">
+    <h2>ステップ 3/5: ループ長指定</h2>
+    <div id="step3_content">
+      <p>波形上をクリックまたは時刻を入力してループの終了位置を指定してください</p>
+      <div class="window">
+        <canvas id="step3_wave" height="128"></canvas><br />
+        ループ境界部分の誤差:<br />
+        <canvas id="step3_graph" height="256"></canvas>
+      </div>
+      <div id="step3_alert" class="alert" style="display:none">ループの検出に失敗しました．前のステップに戻って開始位置を指定しなおすことをおすすめします</div>
+      <div id="step3_control">
+        ループ開始: <input type="text" id="step3_loopbegin" value="0" disabled="disabled" /> 秒<br />
+        ループ終了: <input type="text" id="step3_loopend" value="0" /> 秒<br />
+        <input type="button" id="step3_play" value="再生" />
+        <input type="button" id="step3_stop" value="停止" />
+        ループのジャンプ 3 秒前から再生します
+      </div>
+    </div>
+    <div id="step3_progress"></div>
+    <hr />
+  </div>
+  <div id="step4" style="display:none">
+    <h2>ステップ 4/5: ループ位置調整</h2>
+    <p>波形上をクリックまたは時刻を入力してループの開始位置を指定してください</p>
+    <div class="window">
+      <canvas id="step4_wave" height="128"></canvas><br />
+      ループ境界部分の誤差:<br />
+      <canvas id="step4_graph" height="256"></canvas>
+    </div>
+    <div id="step4_control">
+      ループ開始: <input type="text" id="step4_loopbegin" value="0" /> 秒<br />
+      ループ終了: <input type="text" id="step4_loopend" value="0" disabled="disabled" /> 秒<br />
+      <input type="button" id="step4_play" value="再生" />
+      <input type="button" id="step4_stop" value="停止" />
+      ループのジャンプ 3 秒前から再生します
+    </div>
+    <hr />
+  </div>
+  <div id="step5" style="display:none">
+    <h2>ステップ 5/5: 書き出し</h2>
+    <ul>
+      <li><a href="#" id="step5_head">_head.wav</a></li>
+      <li><a href="#" id="step5_loop">_loop.wav</a></li>
+      <li><a href="#" id="step5_tail">_tail.wav</a></li>
+      <li><a href="#" id="step5_download">一括ダウンロード</a></li>
+    </ul>
+    <a href="#" id="step5_back">ステップ 1 に戻る</a>
+    <hr />
+  </div>
+  <div id="navigation" style="display:none">
+    <input type="button" id="prev" value="前へ" disabled="disabled" />
+    <input type="button" id="next" value="次へ" disabled="disabled" />
+  </div>
+  <script>!function (d, s, id) { var js, fjs = d.getElementsByTagName(s)[0], p = /^http:/.test(d.location) ? 'http' : 'https'; if (!d.getElementById(id)) { js = d.createElement(s); js.id = id; js.src = p + '://platform.twitter.com/widgets.js'; fjs.parentNode.insertBefore(js, fjs); } }(document, 'script', 'twitter-wjs');</script>
+</body>
+</html>
