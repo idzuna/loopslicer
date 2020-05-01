@@ -364,7 +364,7 @@ function timeString(time: number, sampleRate: number) {
   return time.toFixed(Math.floor(Math.log10(sampleRate)) + 2);
 }
 
-let g_configDecimationRatio = 4096;
+let g_configGraphTimescale = 4096;
 let g_configWindowSize = 32;
 let g_configSnapDistance = 32;
 let g_configSseThreshold = 0.0001;
@@ -590,7 +590,7 @@ class Step1 implements Step {
           filenameElement.innerText = file.name;
           await wait(1);
           g_mixedData = mix(g_audioBuffer);
-          g_waveImage = plotWave(g_mixedData, 128, g_configDecimationRatio, g_audioBuffer.sampleRate);
+          g_waveImage = plotWave(g_mixedData, 128, g_configGraphTimescale, g_audioBuffer.sampleRate);
           g_stepManager.resetLaterSteps(0, 1 / g_audioBuffer.sampleRate);
           currentStep.updateWave();
           nextElement.disabled = false;
@@ -660,7 +660,7 @@ class Step2 implements Step {
     waveElement.height = g_waveImage.height;
     ctx.putImageData(g_waveImage, 0, 0);
     ctx.fillStyle = 'red';
-    ctx.fillRect(this.loopBegin * g_audioBuffer.sampleRate / g_configDecimationRatio, 0, 1, waveElement.height);
+    ctx.fillRect(this.loopBegin * g_audioBuffer.sampleRate / g_configGraphTimescale, 0, 1, waveElement.height);
   }
   private updateForm() {
     let loopbeginElement = <HTMLInputElement>document.getElementById('step2_loopbegin');
@@ -688,7 +688,7 @@ class Step2 implements Step {
     };
     stopElement.onclick = stop;
     waveElement.onclick = function (e) {
-      currentStep.setLoopBegin(e.offsetX * g_configDecimationRatio / g_audioBuffer.sampleRate);
+      currentStep.setLoopBegin(e.offsetX * g_configGraphTimescale / g_audioBuffer.sampleRate);
       currentStep.updateWave();
       currentStep.updateForm();
       g_stepManager.resetLaterSteps(currentStep.loopBegin, currentStep.loopBegin + 1 / g_audioBuffer.sampleRate);
@@ -729,10 +729,10 @@ class Step3 implements Step {
     waveElement.height = g_waveImage.height;
     ctx.putImageData(g_waveImage, 0, 0);
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.fillRect(this.loopBegin * g_audioBuffer.sampleRate / g_configDecimationRatio, 0,
-      (this.loopEnd - this.loopBegin) * g_audioBuffer.sampleRate / g_configDecimationRatio, waveElement.height);
+    ctx.fillRect(this.loopBegin * g_audioBuffer.sampleRate / g_configGraphTimescale, 0,
+      (this.loopEnd - this.loopBegin) * g_audioBuffer.sampleRate / g_configGraphTimescale, waveElement.height);
     ctx.fillStyle = 'red';
-    ctx.fillRect(this.loopEnd * g_audioBuffer.sampleRate / g_configDecimationRatio, 0, 1, waveElement.height);
+    ctx.fillRect(this.loopEnd * g_audioBuffer.sampleRate / g_configGraphTimescale, 0, 1, waveElement.height);
   }
   private updateGraph() {
     let graphElement = <HTMLCanvasElement>document.getElementById('step3_graph');
@@ -741,7 +741,7 @@ class Step3 implements Step {
     graphElement.height = this.graphImage.height;
     ctx.putImageData(this.graphImage, 0, 0);
     ctx.fillStyle = 'red';
-    ctx.fillRect(this.loopEnd * g_audioBuffer.sampleRate / g_configDecimationRatio, 0, 1, graphElement.height);
+    ctx.fillRect(this.loopEnd * g_audioBuffer.sampleRate / g_configGraphTimescale, 0, 1, graphElement.height);
   }
   private updateForm() {
     let loopbeginElement = <HTMLInputElement>document.getElementById('step3_loopbegin');
@@ -784,24 +784,24 @@ class Step3 implements Step {
     waveElement.onmousemove = graphElement.onmousemove = function (e) {
       currentStep.updateWave();
       currentStep.updateGraph();
-      let x = e.offsetX * g_configDecimationRatio;
-      let left = Math.max(0, x - g_configDecimationRatio * g_configSnapDistance);
-      let right = Math.min(currentStep.errorTable.length - 1, x + g_configDecimationRatio * g_configSnapDistance);
+      let x = e.offsetX * g_configGraphTimescale;
+      let left = Math.max(0, x - g_configGraphTimescale * g_configSnapDistance);
+      let right = Math.min(currentStep.errorTable.length - 1, x + g_configGraphTimescale * g_configSnapDistance);
       let iMin = searchMin(currentStep.errorTable.slice(left, right)) + left;
       if (iMin === left) {
         iMin = Math.max(currentStep.loopBegin * g_audioBuffer.sampleRate + 1, x);
       }
       let ctxWave = waveElement.getContext('2d');
       ctxWave.fillStyle = 'white';
-      ctxWave.fillRect(iMin / g_configDecimationRatio, 0, 1, waveElement.height);
+      ctxWave.fillRect(iMin / g_configGraphTimescale, 0, 1, waveElement.height);
       let ctxGraph = graphElement.getContext('2d');
       ctxGraph.fillStyle = 'white';
-      ctxGraph.fillRect(iMin / g_configDecimationRatio, 0, 1, graphElement.height);
+      ctxGraph.fillRect(iMin / g_configGraphTimescale, 0, 1, graphElement.height);
     };
     waveElement.onclick = graphElement.onclick = function (e) {
-      let x = e.offsetX * g_configDecimationRatio;
-      let left = Math.max(0, x - g_configDecimationRatio * g_configSnapDistance);
-      let right = Math.min(currentStep.errorTable.length - 1, x + g_configDecimationRatio * g_configSnapDistance);
+      let x = e.offsetX * g_configGraphTimescale;
+      let left = Math.max(0, x - g_configGraphTimescale * g_configSnapDistance);
+      let right = Math.min(currentStep.errorTable.length - 1, x + g_configGraphTimescale * g_configSnapDistance);
       let iMin = searchMin(currentStep.errorTable.slice(left, right)) + left;
       if (iMin === left) {
         iMin = Math.max(currentStep.loopBegin * g_audioBuffer.sampleRate + 1, x);
@@ -866,7 +866,7 @@ class Step3 implements Step {
       currentStep.setLoopEnd(iMin / g_audioBuffer.sampleRate);
       currentStep.valid = true;
       currentStep.errorTable = errorTable;
-      currentStep.graphImage = plotGraph(errorTable, 256, g_configDecimationRatio, 'min', offsetDB, 2);
+      currentStep.graphImage = plotGraph(errorTable, 256, g_configGraphTimescale, 'min', offsetDB, 2);
       g_stepManager.resetLaterSteps(currentStep.loopBegin, currentStep.loopEnd);
     }
     currentStep.updateWave();
@@ -907,10 +907,10 @@ class Step4 implements Step {
     waveElement.height = g_waveImage.height;
     ctx.putImageData(g_waveImage, 0, 0);
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.fillRect(this.loopBegin * g_audioBuffer.sampleRate / g_configDecimationRatio, 0,
-      (this.loopEnd - this.loopBegin) * g_audioBuffer.sampleRate / g_configDecimationRatio, waveElement.height);
+    ctx.fillRect(this.loopBegin * g_audioBuffer.sampleRate / g_configGraphTimescale, 0,
+      (this.loopEnd - this.loopBegin) * g_audioBuffer.sampleRate / g_configGraphTimescale, waveElement.height);
     ctx.fillStyle = 'red';
-    ctx.fillRect(this.loopBegin * g_audioBuffer.sampleRate / g_configDecimationRatio, 0, 1, waveElement.height);
+    ctx.fillRect(this.loopBegin * g_audioBuffer.sampleRate / g_configGraphTimescale, 0, 1, waveElement.height);
   }
   private updateGraph() {
     let graphElement = <HTMLCanvasElement>document.getElementById('step4_graph');
@@ -919,7 +919,7 @@ class Step4 implements Step {
     graphElement.height = this.graphImage.height;
     ctx.putImageData(this.graphImage, 0, 0);
     ctx.fillStyle = 'red';
-    ctx.fillRect(this.loopBegin * g_audioBuffer.sampleRate / g_configDecimationRatio, 0, 1, graphElement.height);
+    ctx.fillRect(this.loopBegin * g_audioBuffer.sampleRate / g_configGraphTimescale, 0, 1, graphElement.height);
   }
   private updateForm() {
     let loopbeginElement = <HTMLInputElement>document.getElementById('step4_loopbegin');
@@ -973,7 +973,7 @@ class Step4 implements Step {
       ctxGraph.fillRect(e.offsetX, 0, 1, graphElement.height);
     };
     waveElement.onclick = graphElement.onclick = function (e) {
-      currentStep.setLoopBegin(e.offsetX * g_configDecimationRatio / g_audioBuffer.sampleRate);
+      currentStep.setLoopBegin(e.offsetX * g_configGraphTimescale / g_audioBuffer.sampleRate);
       currentStep.updateWave();
       currentStep.updateGraph();
       currentStep.updateForm();
@@ -992,7 +992,7 @@ class Step4 implements Step {
         let d = g_mixedData[i] - g_mixedData[iLoopInterval + i];
         errorTable[i] = d * d;
       }
-      currentStep.graphImage = plotGraph(errorTable, 256, g_configDecimationRatio, 'average', 0, 2);
+      currentStep.graphImage = plotGraph(errorTable, 256, g_configGraphTimescale, 'average', 0, 2);
       currentStep.errorTable = errorTable;
       currentStep.valid = true;
     }
