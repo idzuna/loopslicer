@@ -368,6 +368,7 @@ let g_configGraphTimescale = 4096;
 let g_configWindowSize = 32;
 let g_configSnapDistance = 32;
 let g_configSseThreshold = 0.0001;
+let g_configDecimationRatio = 1;
 
 let g_audioSource = <AudioBufferSourceNode>null;
 let g_audioBuffer = <AudioBuffer>null;
@@ -846,7 +847,7 @@ class Step3 implements Step {
           }
         }
         sse = 0;
-        for (j = 0; j < g_configWindowSize; j++) {
+        for (j = 0; j < g_configWindowSize; j += g_configDecimationRatio) {
           d = g_mixedData[iBegin + j] - g_mixedData[i + j];
           sse += d * d;
           if (sse > th) {
