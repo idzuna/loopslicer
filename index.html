@@ -38,11 +38,12 @@
       <li>PC 推奨です．スマートフォンや非力なタブレットでは動作しないか，動作が遅いです．</li>
       <li>Firefox, Chrome, Edge で動作確認しています．Internet Explorer では動作しません．</li>
     </ul>
-    <h2>裏技</h2>
-    <ul>
-      <li>F12 キーでコンソールを開いて g_config* という変数を書き換えると，ループ検出のパラメータを変更できます．うまく検出できないときにお試しください．</li>
-    </ul>
     <h2>更新履歴</h2>
+    <h3>2020/05/04</h3>
+    <ul>
+      <li>ループ自動検索のパラメータを調整できるようにしました</li>
+      <li>サンプリング周波数の自動検出に対応しました</li>
+    </ul>
     <h3>2020/04/30</h3>
     <ul>
       <li>ステップを戻ったときの挙動を修正しました</li>
@@ -56,12 +57,13 @@
   </div>
   <div id="step1" style="display:none">
     <h2>ステップ 1/5: 音声読み込み</h2>
-    <p>音声ファイルをこのページにドラッグアンドドロップしてください<span class="hint">（WAV 形式以外のファイルは元の形式にかかわらずサンプリング周波数 44100Hz に変換されます）</span></p>
+    <p>音声ファイルをこのページにドラッグアンドドロップしてください</p>
     <div class="window">
       <canvas id="step1_wave" height="128"></canvas>
     </div>
     <div id="step1_filename"></div>
     <div id="step1_type"></div>
+    <div id="step1_typewarning" class="alert" style="display:none">非対応形式のオーディオデータが強制的に変換されました．続行できますが劣化が生じている可能性があります</div>
     <div id="step1_alert" class="alert" style="display:none">オーディオデータの読み込みに失敗しました</div>
     <div id="step1_control">
       <input type="button" id="step1_play" value="再生" />
@@ -82,6 +84,15 @@
       <input type="button" id="step2_stop" value="停止" />
     </div>
     <p class="hint">ヒント: 無音や似た個所が多いところを避けたほうがループ自動検出がうまくいきやすいようです．実際の切り出し位置は後のステップで調整できるので，ここではループ自動検出がうまくいきそうな位置を選んでください</p>
+    <a href="#" id="step2_openadvanced">ループ自動検索の高度な設定</a>
+    <dl id="step2_advanced" style="display:none">
+      <dt><label>ウィンドウサイズ: <input type="text" id="step2_windowsize" /></label></dt>
+      <dd>パターンマッチングを行う際のウィンドウの大きさをサンプル数で指定します．誤ったループが検出されてしまう場合に値を大きくするとうまくいくことがありますが，計算時間が長くなります．</dd>
+      <dt><label>しきい値: <input type="text" id="step2_ssethreshold" /></label></dt>
+      <dd>パターンマッチングを行う際，差分がこの値より大きくなった時点で計算を省略します．ループがまったく検出されない場合に値を大きくするとうまくいくことがありますが，計算時間が長くなります．</dd>
+      <dt><label>間引き率: <input type="text" id="step2_decimationratio" /></label></dt>
+      <dd>パターンマッチングを行う際，比較するサンプルを飛ばすことで計算量を減らします．ウィンドウ幅を大きくしたときに，合わせてこの値を大きくすると，計算量の増加を軽減できます．</dd>
+    </dl>
     <hr />
   </div>
   <div id="step3" style="display:none">

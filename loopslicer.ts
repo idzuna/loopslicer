@@ -137,31 +137,51 @@ function fourcc(str: string) {
 }
 
 function detectSampleType(audioBuffer: AudioBuffer) {
+  let threshold = 0.5 / 256;
   let channel: Float32Array;
   let ch: number;
   let i: number;
   let v: number;
-  let e0 = 0;
-  let e1 = 0;
-  let e2 = 0;
+  let e = 0;
   for (ch = 0; ch < audioBuffer.numberOfChannels; ch++) {
     channel = audioBuffer.getChannelData(ch);
     for (i = 0; i < audioBuffer.length; i++) {
       v = channel[i] * 0x8000;
-      e0 = Math.max(e0, Math.abs(Math.round(v) - v));
-      v = channel[i] > 0 ? channel[i] * 0x7fff : channel[i] * 0x8000;
-      e1 = Math.max(e1, Math.abs(Math.round(v) - v));
-      v = channel[i] * 0x800000;
-      e2 = Math.max(e2, Math.abs(Math.round(v) - v));
+      e = Math.max(e, Math.abs(Math.round(v) - v));
+      if (e >= threshold) {
+        break;
+      }
     }
   }
-  if (e0 * 256 < 0.5) {
+  if (e < threshold) {
     return 'Int16';
   }
-  if (e1 * 256 < 0.5) {
+  e = 0;
+  for (ch = 0; ch < audioBuffer.numberOfChannels; ch++) {
+    channel = audioBuffer.getChannelData(ch);
+    for (i = 0; i < audioBuffer.length; i++) {
+      v = channel[i] > 0 ? channel[i] * 0x7fff : channel[i] * 0x8000;
+      e = Math.max(e, Math.abs(Math.round(v) - v));
+      if (e >= threshold) {
+        break;
+      }
+    }
+  }
+  if (e < threshold) {
     return 'Int16Asymmetric';
   }
-  if (e2 * 256 < 0.5) {
+  e = 0;
+  for (ch = 0; ch < audioBuffer.numberOfChannels; ch++) {
+    channel = audioBuffer.getChannelData(ch);
+    for (i = 0; i < audioBuffer.length; i++) {
+      v = channel[i] * 0x800000;
+      e = Math.max(e, Math.abs(Math.round(v) - v));
+      if (e >= threshold) {
+        break;
+      }
+    }
+  }
+  if (e < threshold) {
     return 'Int24';
   }
   return 'Float32';
@@ -364,10 +384,11 @@ function timeString(time: number, sampleRate: number) {
   return time.toFixed(Math.floor(Math.log10(sampleRate)) + 2);
 }
 
-let g_configDecimationRatio = 4096;
+let g_configGraphTimescale = 4096;
 let g_configWindowSize = 32;
 let g_configSnapDistance = 32;
 let g_configSseThreshold = 0.0001;
+let g_configDecimationRatio = 1;
 
 let g_audioSource = <AudioBufferSourceNode>null;
 let g_audioBuffer = <AudioBuffer>null;
@@ -547,6 +568,7 @@ class Step1 implements Step {
     this.myondrop = function (e: DragEvent) {
       let filenameElement = <HTMLDivElement>document.getElementById('step1_filename');
       let typeElement = <HTMLDivElement>document.getElementById('step1_type');
+      let typewarningElement = <HTMLDivElement>document.getElementById('step1_typewarning');
       let stopElement = <HTMLInputElement>document.getElementById('step1_stop');
       let alertElement = <HTMLDivElement>document.getElementById('step1_alert');
       let nextElement = <HTMLInputElement>document.getElementById('next');
@@ -557,40 +579,55 @@ class Step1 implements Step {
       let reader = new FileReader();
       reader.onload = async function (e) {
         let buffer = loadWav(<ArrayBuffer>reader.result);
+        let type = '';
         if (buffer) {
-          g_audioBuffer = buffer;
-          g_sampleType = buffer['sampleType'];
-          if (g_sampleType === 'Int16') {
-            typeElement.innerText = g_audioBuffer.numberOfChannels + 'ch x ' + g_audioBuffer.sampleRate + 'Hz 16bit Linear PCM';
-          } else if (g_sampleType === 'Int24') {
-            typeElement.innerText = g_audioBuffer.numberOfChannels + 'ch x ' + g_audioBuffer.sampleRate + 'Hz 24bit Linear PCM';
-          } else if (g_sampleType === 'Float32') {
-            typeElement.innerText = g_audioBuffer.numberOfChannels + 'ch x ' + g_audioBuffer.sampleRate + 'Hz 32bit IEEE 754 Float';
-          }
+          type = buffer['sampleType'];
         } else {
-          try {
-            let offlineAudioCtx = new OfflineAudioContext(2, 44100, 44100);
-            buffer = await offlineAudioCtx.decodeAudioData(<ArrayBuffer>reader.result);
-            if (buffer) {
-              g_audioBuffer = buffer;
-              g_sampleType = detectSampleType(buffer);
-              if (g_sampleType === 'Int16' || g_sampleType === 'Int16Asymmetric') {
-                typeElement.innerText = 'Decoded to ' + g_audioBuffer.numberOfChannels + 'ch x ' + g_audioBuffer.sampleRate + 'Hz 16bit Linear PCM';
-              } else if (g_sampleType === 'Int24') {
-                typeElement.innerText = 'Decoded to ' + g_audioBuffer.numberOfChannels + 'ch x ' + g_audioBuffer.sampleRate + 'Hz 24bit Linear PCM';
-              } else if (g_sampleType === 'Float32') {
-                typeElement.innerText = 'Decoded to ' + g_audioBuffer.numberOfChannels + 'ch x ' + g_audioBuffer.sampleRate + 'Hz 32bit IEEE 754 Float';
+          for (let sampleRate of [44100, 48000, 96000, 192000, 32000, 64000, 128000, 88200, 176400, 24000, 22050, 16000, 12000, 11025, 8000]) {
+            try {
+              let offlineAudioCtx = new OfflineAudioContext(2, sampleRate, sampleRate);
+              let tmpBuffer = await offlineAudioCtx.decodeAudioData((<ArrayBuffer>reader.result).slice(0));
+              if (tmpBuffer) {
+                let t = Date.now();
+                let tmpType = detectSampleType(tmpBuffer);
+                console.log(Date.now() - t);
+                if (tmpType !== 'Float32') {
+                  buffer = tmpBuffer;
+                  type = tmpType;
+                  break;
+                }
+                if (sampleRate === 192000) {
+                  buffer = tmpBuffer;
+                  type = tmpType;
+                }
               }
-            }
-          } catch (e) { }
+            } catch (e) { }
+          }
         }
         if (buffer) {
+          g_audioBuffer = buffer;
+          g_sampleType = type;
+          let sampleTypeString = 'unknown sample format';
+          if (g_sampleType === 'Int16' || g_sampleType === 'Int16Asymmetric') {
+            sampleTypeString = '16bit Linear PCM';
+          } else if (g_sampleType === 'Int24') {
+            sampleTypeString = '24bit Linear PCM';
+          } else if (g_sampleType === 'Float32') {
+            sampleTypeString = '32bit IEEE 754 Float PCM';
+          }
+          typeElement.innerText = g_audioBuffer.numberOfChannels + 'ch x ' + g_audioBuffer.sampleRate + 'Hz ' + sampleTypeString;
+          if (g_sampleType === 'Float32' && !buffer['sampleType']) {
+            typewarningElement.style.display = 'block';
+          } else {
+            typewarningElement.style.display = 'none';
+          }
+          typeElement.appendChild
           stopElement.click();
           g_filename = file.name.match(/^(.+?)(\.[^.]*)?$/)[1];
           filenameElement.innerText = file.name;
           await wait(1);
           g_mixedData = mix(g_audioBuffer);
-          g_waveImage = plotWave(g_mixedData, 128, g_configDecimationRatio, g_audioBuffer.sampleRate);
+          g_waveImage = plotWave(g_mixedData, 128, g_configGraphTimescale, g_audioBuffer.sampleRate);
           g_stepManager.resetLaterSteps(0, 1 / g_audioBuffer.sampleRate);
           currentStep.updateWave();
           nextElement.disabled = false;
@@ -660,7 +697,7 @@ class Step2 implements Step {
     waveElement.height = g_waveImage.height;
     ctx.putImageData(g_waveImage, 0, 0);
     ctx.fillStyle = 'red';
-    ctx.fillRect(this.loopBegin * g_audioBuffer.sampleRate / g_configDecimationRatio, 0, 1, waveElement.height);
+    ctx.fillRect(this.loopBegin * g_audioBuffer.sampleRate / g_configGraphTimescale, 0, 1, waveElement.height);
   }
   private updateForm() {
     let loopbeginElement = <HTMLInputElement>document.getElementById('step2_loopbegin');
@@ -677,6 +714,11 @@ class Step2 implements Step {
     let loopbeginElement = <HTMLInputElement>document.getElementById('step2_loopbegin');
     let playElement = <HTMLInputElement>document.getElementById('step2_play');
     let stopElement = <HTMLInputElement>document.getElementById('step2_stop');
+    let openadvancedElement = <HTMLAnchorElement>document.getElementById('step2_openadvanced');
+    let advancedElement = <HTMLDivElement>document.getElementById('step2_advanced');
+    let windowsizeElement = <HTMLInputElement>document.getElementById('step2_windowsize');
+    let ssethresholdElement = <HTMLInputElement>document.getElementById('step2_ssethreshold');
+    let decimationratioElement = <HTMLInputElement>document.getElementById('step2_decimationratio');
     loopbeginElement.onchange = function () {
       currentStep.setLoopBegin(+loopbeginElement.value);
       currentStep.updateWave();
@@ -688,17 +730,45 @@ class Step2 implements Step {
     };
     stopElement.onclick = stop;
     waveElement.onclick = function (e) {
-      currentStep.setLoopBegin(e.offsetX * g_configDecimationRatio / g_audioBuffer.sampleRate);
+      currentStep.setLoopBegin(e.offsetX * g_configGraphTimescale / g_audioBuffer.sampleRate);
       currentStep.updateWave();
       currentStep.updateForm();
+      g_stepManager.resetLaterSteps(currentStep.loopBegin, currentStep.loopBegin + 1 / g_audioBuffer.sampleRate);
+    };
+    openadvancedElement.onclick = function () {
+      advancedElement.style.display = (advancedElement.style.display === 'none' ? 'block' : 'none');
+      return false;
+    };
+    windowsizeElement.onchange = function () {
+      let v = Math.max(1, Math.floor(+windowsizeElement.value));
+      windowsizeElement.value = '' + v;
+      g_configWindowSize = v;
+      g_stepManager.resetLaterSteps(currentStep.loopBegin, currentStep.loopBegin + 1 / g_audioBuffer.sampleRate);
+    };
+    ssethresholdElement.onchange = function () {
+      let v = Math.max(0, +ssethresholdElement.value);
+      windowsizeElement.value = '' + v;
+      g_configSseThreshold = v;
+      g_stepManager.resetLaterSteps(currentStep.loopBegin, currentStep.loopBegin + 1 / g_audioBuffer.sampleRate);
+    };
+    decimationratioElement.onchange = function () {
+      let v = Math.max(1, Math.floor(+decimationratioElement.value));
+      decimationratioElement.value = '' + v;
+      g_configDecimationRatio = v;
       g_stepManager.resetLaterSteps(currentStep.loopBegin, currentStep.loopBegin + 1 / g_audioBuffer.sampleRate);
     };
   }
   public show() {
     let stepElement = <HTMLDivElement>document.getElementById('step2');
+    let windowsizeElement = <HTMLInputElement>document.getElementById('step2_windowsize');
+    let ssethresholdElement = <HTMLInputElement>document.getElementById('step2_ssethreshold');
+    let decimationratioElement = <HTMLInputElement>document.getElementById('step2_decimationratio');
     let prevElement = <HTMLInputElement>document.getElementById('prev');
     let nextElement = <HTMLInputElement>document.getElementById('next');
     stepElement.style.display = 'block';
+    windowsizeElement.value = '' + g_configWindowSize;
+    ssethresholdElement.value = '' + g_configSseThreshold;
+    decimationratioElement.value = '' + g_configDecimationRatio;
     prevElement.disabled = false;
     nextElement.disabled = false;
     this.updateWave();
@@ -729,10 +799,10 @@ class Step3 implements Step {
     waveElement.height = g_waveImage.height;
     ctx.putImageData(g_waveImage, 0, 0);
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.fillRect(this.loopBegin * g_audioBuffer.sampleRate / g_configDecimationRatio, 0,
-      (this.loopEnd - this.loopBegin) * g_audioBuffer.sampleRate / g_configDecimationRatio, waveElement.height);
+    ctx.fillRect(this.loopBegin * g_audioBuffer.sampleRate / g_configGraphTimescale, 0,
+      (this.loopEnd - this.loopBegin) * g_audioBuffer.sampleRate / g_configGraphTimescale, waveElement.height);
     ctx.fillStyle = 'red';
-    ctx.fillRect(this.loopEnd * g_audioBuffer.sampleRate / g_configDecimationRatio, 0, 1, waveElement.height);
+    ctx.fillRect(this.loopEnd * g_audioBuffer.sampleRate / g_configGraphTimescale, 0, 1, waveElement.height);
   }
   private updateGraph() {
     let graphElement = <HTMLCanvasElement>document.getElementById('step3_graph');
@@ -741,7 +811,7 @@ class Step3 implements Step {
     graphElement.height = this.graphImage.height;
     ctx.putImageData(this.graphImage, 0, 0);
     ctx.fillStyle = 'red';
-    ctx.fillRect(this.loopEnd * g_audioBuffer.sampleRate / g_configDecimationRatio, 0, 1, graphElement.height);
+    ctx.fillRect(this.loopEnd * g_audioBuffer.sampleRate / g_configGraphTimescale, 0, 1, graphElement.height);
   }
   private updateForm() {
     let loopbeginElement = <HTMLInputElement>document.getElementById('step3_loopbegin');
@@ -784,24 +854,24 @@ class Step3 implements Step {
     waveElement.onmousemove = graphElement.onmousemove = function (e) {
       currentStep.updateWave();
       currentStep.updateGraph();
-      let x = e.offsetX * g_configDecimationRatio;
-      let left = Math.max(0, x - g_configDecimationRatio * g_configSnapDistance);
-      let right = Math.min(currentStep.errorTable.length - 1, x + g_configDecimationRatio * g_configSnapDistance);
+      let x = e.offsetX * g_configGraphTimescale;
+      let left = Math.max(0, x - g_configGraphTimescale * g_configSnapDistance);
+      let right = Math.min(currentStep.errorTable.length - 1, x + g_configGraphTimescale * g_configSnapDistance);
       let iMin = searchMin(currentStep.errorTable.slice(left, right)) + left;
       if (iMin === left) {
         iMin = Math.max(currentStep.loopBegin * g_audioBuffer.sampleRate + 1, x);
       }
       let ctxWave = waveElement.getContext('2d');
       ctxWave.fillStyle = 'white';
-      ctxWave.fillRect(iMin / g_configDecimationRatio, 0, 1, waveElement.height);
+      ctxWave.fillRect(iMin / g_configGraphTimescale, 0, 1, waveElement.height);
       let ctxGraph = graphElement.getContext('2d');
       ctxGraph.fillStyle = 'white';
-      ctxGraph.fillRect(iMin / g_configDecimationRatio, 0, 1, graphElement.height);
+      ctxGraph.fillRect(iMin / g_configGraphTimescale, 0, 1, graphElement.height);
     };
     waveElement.onclick = graphElement.onclick = function (e) {
-      let x = e.offsetX * g_configDecimationRatio;
-      let left = Math.max(0, x - g_configDecimationRatio * g_configSnapDistance);
-      let right = Math.min(currentStep.errorTable.length - 1, x + g_configDecimationRatio * g_configSnapDistance);
+      let x = e.offsetX * g_configGraphTimescale;
+      let left = Math.max(0, x - g_configGraphTimescale * g_configSnapDistance);
+      let right = Math.min(currentStep.errorTable.length - 1, x + g_configGraphTimescale * g_configSnapDistance);
       let iMin = searchMin(currentStep.errorTable.slice(left, right)) + left;
       if (iMin === left) {
         iMin = Math.max(currentStep.loopBegin * g_audioBuffer.sampleRate + 1, x);
@@ -846,7 +916,7 @@ class Step3 implements Step {
           }
         }
         sse = 0;
-        for (j = 0; j < g_configWindowSize; j++) {
+        for (j = 0; j < g_configWindowSize; j += g_configDecimationRatio) {
           d = g_mixedData[iBegin + j] - g_mixedData[i + j];
           sse += d * d;
           if (sse > th) {
@@ -866,7 +936,7 @@ class Step3 implements Step {
       currentStep.setLoopEnd(iMin / g_audioBuffer.sampleRate);
       currentStep.valid = true;
       currentStep.errorTable = errorTable;
-      currentStep.graphImage = plotGraph(errorTable, 256, g_configDecimationRatio, 'min', offsetDB, 2);
+      currentStep.graphImage = plotGraph(errorTable, 256, g_configGraphTimescale, 'min', offsetDB, 2);
       g_stepManager.resetLaterSteps(currentStep.loopBegin, currentStep.loopEnd);
     }
     currentStep.updateWave();
@@ -907,10 +977,10 @@ class Step4 implements Step {
     waveElement.height = g_waveImage.height;
     ctx.putImageData(g_waveImage, 0, 0);
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.fillRect(this.loopBegin * g_audioBuffer.sampleRate / g_configDecimationRatio, 0,
-      (this.loopEnd - this.loopBegin) * g_audioBuffer.sampleRate / g_configDecimationRatio, waveElement.height);
+    ctx.fillRect(this.loopBegin * g_audioBuffer.sampleRate / g_configGraphTimescale, 0,
+      (this.loopEnd - this.loopBegin) * g_audioBuffer.sampleRate / g_configGraphTimescale, waveElement.height);
     ctx.fillStyle = 'red';
-    ctx.fillRect(this.loopBegin * g_audioBuffer.sampleRate / g_configDecimationRatio, 0, 1, waveElement.height);
+    ctx.fillRect(this.loopBegin * g_audioBuffer.sampleRate / g_configGraphTimescale, 0, 1, waveElement.height);
   }
   private updateGraph() {
     let graphElement = <HTMLCanvasElement>document.getElementById('step4_graph');
@@ -919,7 +989,7 @@ class Step4 implements Step {
     graphElement.height = this.graphImage.height;
     ctx.putImageData(this.graphImage, 0, 0);
     ctx.fillStyle = 'red';
-    ctx.fillRect(this.loopBegin * g_audioBuffer.sampleRate / g_configDecimationRatio, 0, 1, graphElement.height);
+    ctx.fillRect(this.loopBegin * g_audioBuffer.sampleRate / g_configGraphTimescale, 0, 1, graphElement.height);
   }
   private updateForm() {
     let loopbeginElement = <HTMLInputElement>document.getElementById('step4_loopbegin');
@@ -973,7 +1043,7 @@ class Step4 implements Step {
       ctxGraph.fillRect(e.offsetX, 0, 1, graphElement.height);
     };
     waveElement.onclick = graphElement.onclick = function (e) {
-      currentStep.setLoopBegin(e.offsetX * g_configDecimationRatio / g_audioBuffer.sampleRate);
+      currentStep.setLoopBegin(e.offsetX * g_configGraphTimescale / g_audioBuffer.sampleRate);
       currentStep.updateWave();
       currentStep.updateGraph();
       currentStep.updateForm();
@@ -992,7 +1062,7 @@ class Step4 implements Step {
         let d = g_mixedData[i] - g_mixedData[iLoopInterval + i];
         errorTable[i] = d * d;
       }
-      currentStep.graphImage = plotGraph(errorTable, 256, g_configDecimationRatio, 'average', 0, 2);
+      currentStep.graphImage = plotGraph(errorTable, 256, g_configGraphTimescale, 'average', 0, 2);
       currentStep.errorTable = errorTable;
       currentStep.valid = true;
     }
