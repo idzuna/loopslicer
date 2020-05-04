@@ -548,6 +548,7 @@ class Step1 implements Step {
     this.myondrop = function (e: DragEvent) {
       let filenameElement = <HTMLDivElement>document.getElementById('step1_filename');
       let typeElement = <HTMLDivElement>document.getElementById('step1_type');
+      let typewarningElement = <HTMLDivElement>document.getElementById('step1_typewarning');
       let stopElement = <HTMLInputElement>document.getElementById('step1_stop');
       let alertElement = <HTMLDivElement>document.getElementById('step1_alert');
       let nextElement = <HTMLInputElement>document.getElementById('next');
@@ -558,34 +559,47 @@ class Step1 implements Step {
       let reader = new FileReader();
       reader.onload = async function (e) {
         let buffer = loadWav(<ArrayBuffer>reader.result);
+        let type = '';
         if (buffer) {
-          g_audioBuffer = buffer;
-          g_sampleType = buffer['sampleType'];
-          if (g_sampleType === 'Int16') {
-            typeElement.innerText = g_audioBuffer.numberOfChannels + 'ch x ' + g_audioBuffer.sampleRate + 'Hz 16bit Linear PCM';
-          } else if (g_sampleType === 'Int24') {
-            typeElement.innerText = g_audioBuffer.numberOfChannels + 'ch x ' + g_audioBuffer.sampleRate + 'Hz 24bit Linear PCM';
-          } else if (g_sampleType === 'Float32') {
-            typeElement.innerText = g_audioBuffer.numberOfChannels + 'ch x ' + g_audioBuffer.sampleRate + 'Hz 32bit IEEE 754 Float';
-          }
+          type = buffer['sampleType'];
         } else {
-          try {
-            let offlineAudioCtx = new OfflineAudioContext(2, 44100, 44100);
-            buffer = await offlineAudioCtx.decodeAudioData(<ArrayBuffer>reader.result);
-            if (buffer) {
-              g_audioBuffer = buffer;
-              g_sampleType = detectSampleType(buffer);
-              if (g_sampleType === 'Int16' || g_sampleType === 'Int16Asymmetric') {
-                typeElement.innerText = 'Decoded to ' + g_audioBuffer.numberOfChannels + 'ch x ' + g_audioBuffer.sampleRate + 'Hz 16bit Linear PCM';
-              } else if (g_sampleType === 'Int24') {
-                typeElement.innerText = 'Decoded to ' + g_audioBuffer.numberOfChannels + 'ch x ' + g_audioBuffer.sampleRate + 'Hz 24bit Linear PCM';
-              } else if (g_sampleType === 'Float32') {
-                typeElement.innerText = 'Decoded to ' + g_audioBuffer.numberOfChannels + 'ch x ' + g_audioBuffer.sampleRate + 'Hz 32bit IEEE 754 Float';
+          for (let sampleRate of [44100, 48000, 96000, 192000, 32000, 64000, 128000, 88200, 176400, 24000, 22050, 16000, 12000, 11025, 8000]) {
+            try {
+              let offlineAudioCtx = new OfflineAudioContext(2, sampleRate, sampleRate);
+              let tmpBuffer = await offlineAudioCtx.decodeAudioData((<ArrayBuffer>reader.result).slice(0));
+              if (tmpBuffer) {
+                let tmpType = detectSampleType(tmpBuffer);
+                if (tmpType !== 'Float32') {
+                  buffer = tmpBuffer;
+                  type = tmpType;
+                  break;
+                }
+                if (sampleRate === 192000) {
+                  buffer = tmpBuffer;
+                  type = tmpType;
+                }
               }
-            }
-          } catch (e) { }
+            } catch (e) { }
+          }
         }
         if (buffer) {
+          g_audioBuffer = buffer;
+          g_sampleType = type;
+          let sampleTypeString = 'unknown sample format';
+          if (g_sampleType === 'Int16' || g_sampleType === 'Int16Asymmetric') {
+            sampleTypeString = '16bit Linear PCM';
+          } else if (g_sampleType === 'Int24') {
+            sampleTypeString = '24bit Linear PCM';
+          } else if (g_sampleType === 'Float32') {
+            sampleTypeString = '32bit IEEE 754 Float PCM';
+          }
+          typeElement.innerText = g_audioBuffer.numberOfChannels + 'ch x ' + g_audioBuffer.sampleRate + 'Hz ' + sampleTypeString;
+          if (g_sampleType === 'Float32' && !buffer['sampleType']) {
+            typewarningElement.style.display = 'block';
+          } else {
+            typewarningElement.style.display = 'none';
+          }
+          typeElement.appendChild
           stopElement.click();
           g_filename = file.name.match(/^(.+?)(\.[^.]*)?$/)[1];
           filenameElement.innerText = file.name;

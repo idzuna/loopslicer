@@ -52,12 +52,13 @@
   </div>
   <div id="step1" style="display:none">
     <h2>ステップ 1/5: 音声読み込み</h2>
-    <p>音声ファイルをこのページにドラッグアンドドロップしてください<span class="hint">（WAV 形式以外のファイルは元の形式にかかわらずサンプリング周波数 44100Hz に変換されます）</span></p>
+    <p>音声ファイルをこのページにドラッグアンドドロップしてください</p>
     <div class="window">
       <canvas id="step1_wave" height="128"></canvas>
     </div>
     <div id="step1_filename"></div>
     <div id="step1_type"></div>
+    <div id="step1_typewarning" class="alert" style="display:none">非対応形式のオーディオデータが強制的に変換されました．続行できますが劣化が生じている可能性があります</div>
     <div id="step1_alert" class="alert" style="display:none">オーディオデータの読み込みに失敗しました</div>
     <div id="step1_control">
       <input type="button" id="step1_play" value="再生" />
