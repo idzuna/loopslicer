@@ -137,31 +137,51 @@ function fourcc(str: string) {
 }
 
 function detectSampleType(audioBuffer: AudioBuffer) {
+  let threshold = 0.5 / 256;
   let channel: Float32Array;
   let ch: number;
   let i: number;
   let v: number;
-  let e0 = 0;
-  let e1 = 0;
-  let e2 = 0;
+  let e = 0;
   for (ch = 0; ch < audioBuffer.numberOfChannels; ch++) {
     channel = audioBuffer.getChannelData(ch);
     for (i = 0; i < audioBuffer.length; i++) {
       v = channel[i] * 0x8000;
-      e0 = Math.max(e0, Math.abs(Math.round(v) - v));
-      v = channel[i] > 0 ? channel[i] * 0x7fff : channel[i] * 0x8000;
-      e1 = Math.max(e1, Math.abs(Math.round(v) - v));
-      v = channel[i] * 0x800000;
-      e2 = Math.max(e2, Math.abs(Math.round(v) - v));
+      e = Math.max(e, Math.abs(Math.round(v) - v));
+      if (e >= threshold) {
+        break;
+      }
     }
   }
-  if (e0 * 256 < 0.5) {
+  if (e < threshold) {
     return 'Int16';
   }
-  if (e1 * 256 < 0.5) {
+  e = 0;
+  for (ch = 0; ch < audioBuffer.numberOfChannels; ch++) {
+    channel = audioBuffer.getChannelData(ch);
+    for (i = 0; i < audioBuffer.length; i++) {
+      v = channel[i] > 0 ? channel[i] * 0x7fff : channel[i] * 0x8000;
+      e = Math.max(e, Math.abs(Math.round(v) - v));
+      if (e >= threshold) {
+        break;
+      }
+    }
+  }
+  if (e < threshold) {
     return 'Int16Asymmetric';
   }
-  if (e2 * 256 < 0.5) {
+  e = 0;
+  for (ch = 0; ch < audioBuffer.numberOfChannels; ch++) {
+    channel = audioBuffer.getChannelData(ch);
+    for (i = 0; i < audioBuffer.length; i++) {
+      v = channel[i] * 0x800000;
+      e = Math.max(e, Math.abs(Math.round(v) - v));
+      if (e >= threshold) {
+        break;
+      }
+    }
+  }
+  if (e < threshold) {
     return 'Int24';
   }
   return 'Float32';
@@ -568,7 +588,9 @@ class Step1 implements Step {
               let offlineAudioCtx = new OfflineAudioContext(2, sampleRate, sampleRate);
               let tmpBuffer = await offlineAudioCtx.decodeAudioData((<ArrayBuffer>reader.result).slice(0));
               if (tmpBuffer) {
+                let t = Date.now();
                 let tmpType = detectSampleType(tmpBuffer);
+                console.log(Date.now() - t);
                 if (tmpType !== 'Float32') {
                   buffer = tmpBuffer;
                   type = tmpType;
