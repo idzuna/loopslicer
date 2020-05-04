@@ -678,6 +678,11 @@ class Step2 implements Step {
     let loopbeginElement = <HTMLInputElement>document.getElementById('step2_loopbegin');
     let playElement = <HTMLInputElement>document.getElementById('step2_play');
     let stopElement = <HTMLInputElement>document.getElementById('step2_stop');
+    let openadvancedElement = <HTMLAnchorElement>document.getElementById('step2_openadvanced');
+    let advancedElement = <HTMLDivElement>document.getElementById('step2_advanced');
+    let windowsizeElement = <HTMLInputElement>document.getElementById('step2_windowsize');
+    let ssethresholdElement = <HTMLInputElement>document.getElementById('step2_ssethreshold');
+    let decimationratioElement = <HTMLInputElement>document.getElementById('step2_decimationratio');
     loopbeginElement.onchange = function () {
       currentStep.setLoopBegin(+loopbeginElement.value);
       currentStep.updateWave();
@@ -694,12 +699,40 @@ class Step2 implements Step {
       currentStep.updateForm();
       g_stepManager.resetLaterSteps(currentStep.loopBegin, currentStep.loopBegin + 1 / g_audioBuffer.sampleRate);
     };
+    openadvancedElement.onclick = function () {
+      advancedElement.style.display = (advancedElement.style.display === 'none' ? 'block' : 'none');
+      return false;
+    };
+    windowsizeElement.onchange = function () {
+      let v = Math.max(1, Math.floor(+windowsizeElement.value));
+      windowsizeElement.value = '' + v;
+      g_configWindowSize = v;
+      g_stepManager.resetLaterSteps(currentStep.loopBegin, currentStep.loopBegin + 1 / g_audioBuffer.sampleRate);
+    };
+    ssethresholdElement.onchange = function () {
+      let v = Math.max(0, +ssethresholdElement.value);
+      windowsizeElement.value = '' + v;
+      g_configSseThreshold = v;
+      g_stepManager.resetLaterSteps(currentStep.loopBegin, currentStep.loopBegin + 1 / g_audioBuffer.sampleRate);
+    };
+    decimationratioElement.onchange = function () {
+      let v = Math.max(1, Math.floor(+decimationratioElement.value));
+      decimationratioElement.value = '' + v;
+      g_configDecimationRatio = v;
+      g_stepManager.resetLaterSteps(currentStep.loopBegin, currentStep.loopBegin + 1 / g_audioBuffer.sampleRate);
+    };
   }
   public show() {
     let stepElement = <HTMLDivElement>document.getElementById('step2');
+    let windowsizeElement = <HTMLInputElement>document.getElementById('step2_windowsize');
+    let ssethresholdElement = <HTMLInputElement>document.getElementById('step2_ssethreshold');
+    let decimationratioElement = <HTMLInputElement>document.getElementById('step2_decimationratio');
     let prevElement = <HTMLInputElement>document.getElementById('prev');
     let nextElement = <HTMLInputElement>document.getElementById('next');
     stepElement.style.display = 'block';
+    windowsizeElement.value = '' + g_configWindowSize;
+    ssethresholdElement.value = '' + g_configSseThreshold;
+    decimationratioElement.value = '' + g_configDecimationRatio;
     prevElement.disabled = false;
     nextElement.disabled = false;
     this.updateWave();
