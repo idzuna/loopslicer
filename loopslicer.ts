@@ -747,7 +747,7 @@ class Step2 implements Step {
     };
     ssethresholdElement.onchange = function () {
       let v = Math.max(0, +ssethresholdElement.value);
-      windowsizeElement.value = '' + v;
+      ssethresholdElement.value = '' + v;
       g_configSseThreshold = v;
       g_stepManager.resetLaterSteps(currentStep.loopBegin, currentStep.loopBegin + 1 / g_audioBuffer.sampleRate);
     };
