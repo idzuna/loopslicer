@@ -17,10 +17,22 @@
     .window {
       width: 100%;
       border: 1px solid gray;
+      margin-bottom: .5em;
       overflow-x: scroll;
     }
     a {
       color: blue;
+    }
+    input[type="text"] {
+      width: 6em;
+      text-align: right;
+      margin-top: .3em;
+    }
+    input[type="button"] {
+      margin-top: .5em;
+    }
+    input {
+      font-size: .9em;
     }
   </style>
 </head>
@@ -70,8 +82,8 @@
     <div id="step1_typewarning" class="alert" style="display:none">非対応形式のオーディオデータが強制的に変換されました．続行できますが劣化が生じている可能性があります</div>
     <div id="step1_alert" class="alert" style="display:none">オーディオデータの読み込みに失敗しました</div>
     <div id="step1_control">
-      <input type="button" id="step1_play" value="再生" />
-      <input type="button" id="step1_stop" value="停止" />
+      <input type="button" id="step1_play" value="▶ 再生" />
+      <input type="button" id="step1_stop" value="⏹ 停止" />
     </div>
     <p style="display:none"><a href="#" id="step1_test">書き出しテスト</a>：読み込んだデータをそのまま WAV ファイルとして書き出します．読み書き時に誤差や劣化が生じていないことを確認したいときに使用してください（デバッグもしくは潔癖症の人向け）</p>
     <hr />
@@ -83,9 +95,9 @@
       <canvas id="step2_wave" height="128"></canvas>
     </div>
     <div id="step2_control">
-      ループ開始: <input type="text" id="step2_loopbegin" value="0" /> 秒<br />
-      <input type="button" id="step2_play" value="再生" />
-      <input type="button" id="step2_stop" value="停止" />
+      ループ始点: <input type="text" id="step2_loopbegin" value="0" /> 秒（<input type="text" id="step2_loopbeginsample" value="0" /> サンプル）<br />
+      <input type="button" id="step2_play" value="▶ ループ始点から再生" />
+      <input type="button" id="step2_stop" value="⏹ 停止" />
     </div>
     <p class="hint">ヒント: 無音や似た個所が多いところを避けたほうがループ自動検出がうまくいきやすいようです．実際の切り出し位置は後のステップで調整できるので，ここではループ自動検出がうまくいきそうな位置を選んでください</p>
     <a href="#" id="step2_openadvanced">ループ自動検索の高度な設定</a>
@@ -110,11 +122,11 @@
       </div>
       <div id="step3_alert" class="alert" style="display:none">ループの検出に失敗しました．前のステップに戻って開始位置を指定しなおすことをおすすめします</div>
       <div id="step3_control">
-        ループ開始: <input type="text" id="step3_loopbegin" value="0" disabled="disabled" /> 秒<br />
-        ループ終了: <input type="text" id="step3_loopend" value="0" /> 秒<br />
-        <input type="button" id="step3_play" value="再生" />
-        <input type="button" id="step3_stop" value="停止" />
-        ループのジャンプ 3 秒前から再生します
+        ループ始点: <input type="text" id="step3_loopbegin" value="0" disabled="disabled" /> 秒 - <input type="text" id="step3_loopbeginsample" value="0" disabled="disabled" /> サンプル<br />
+        ループ終点: <input type="text" id="step3_loopend" value="0" /> 秒 - <input type="text" id="step3_loopendsample" value="0" /> サンプル<br />
+        <input type="button" id="step3_play" value="▶ ループ始点から再生" />
+        <input type="button" id="step3_playlast" value="▶ ループ終点３秒前から再生" />
+        <input type="button" id="step3_stop" value="⏹ 停止" />
       </div>
     </div>
     <div id="step3_progress"></div>
@@ -129,11 +141,11 @@
       <canvas id="step4_graph" height="256"></canvas>
     </div>
     <div id="step4_control">
-      ループ開始: <input type="text" id="step4_loopbegin" value="0" /> 秒<br />
-      ループ終了: <input type="text" id="step4_loopend" value="0" disabled="disabled" /> 秒<br />
-      <input type="button" id="step4_play" value="再生" />
-      <input type="button" id="step4_stop" value="停止" />
-      ループのジャンプ 3 秒前から再生します
+      ループ始点: <input type="text" id="step4_loopbegin" value="0" /> 秒 /  <input type="text" id="step4_loopbeginsample" value="0" /> サンプル<br />
+      ループ終点: <input type="text" id="step4_loopend" value="0" disabled="disabled" /> 秒 / <input type="text" id="step4_loopendsample" value="0" disabled="disabled" /> サンプル<br />
+      <input type="button" id="step4_play" value="▶ ループ始点から再生" />
+      <input type="button" id="step4_playlast" value="▶ ループ終点３秒前から再生" />
+      <input type="button" id="step4_stop" value="⏹ 停止" />
     </div>
     <hr />
   </div>

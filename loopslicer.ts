@@ -701,7 +701,9 @@ class Step2 implements Step {
   }
   private updateForm() {
     let loopbeginElement = <HTMLInputElement>document.getElementById('step2_loopbegin');
+    let loopbeginsampleElement = <HTMLInputElement>document.getElementById('step2_loopbeginsample');
     loopbeginElement.value = timeString(this.loopBegin, g_audioBuffer.sampleRate);
+    loopbeginsampleElement.value = '' + Math.round(this.loopBegin * g_audioBuffer.sampleRate);
   }
   private setLoopBegin(loopBegin: number) {
     let iBegin = Math.round(loopBegin * g_audioBuffer.sampleRate);
@@ -712,6 +714,7 @@ class Step2 implements Step {
     let currentStep = this;
     let waveElement = <HTMLCanvasElement>document.getElementById('step2_wave');
     let loopbeginElement = <HTMLInputElement>document.getElementById('step2_loopbegin');
+    let loopbeginsampleElement = <HTMLInputElement>document.getElementById('step2_loopbeginsample');
     let playElement = <HTMLInputElement>document.getElementById('step2_play');
     let stopElement = <HTMLInputElement>document.getElementById('step2_stop');
     let openadvancedElement = <HTMLAnchorElement>document.getElementById('step2_openadvanced');
@@ -721,6 +724,12 @@ class Step2 implements Step {
     let decimationratioElement = <HTMLInputElement>document.getElementById('step2_decimationratio');
     loopbeginElement.onchange = function () {
       currentStep.setLoopBegin(+loopbeginElement.value);
+      currentStep.updateWave();
+      currentStep.updateForm();
+      g_stepManager.resetLaterSteps(currentStep.loopBegin, currentStep.loopBegin + 1 / g_audioBuffer.sampleRate);
+    };
+    loopbeginsampleElement.onchange = function () {
+      currentStep.setLoopBegin(+loopbeginsampleElement.value / g_audioBuffer.sampleRate);
       currentStep.updateWave();
       currentStep.updateForm();
       g_stepManager.resetLaterSteps(currentStep.loopBegin, currentStep.loopBegin + 1 / g_audioBuffer.sampleRate);
@@ -815,9 +824,13 @@ class Step3 implements Step {
   }
   private updateForm() {
     let loopbeginElement = <HTMLInputElement>document.getElementById('step3_loopbegin');
+    let loopbeginsampleElement = <HTMLInputElement>document.getElementById('step3_loopbeginsample');
     let loopendElement = <HTMLInputElement>document.getElementById('step3_loopend');
+    let loopendsampleElement = <HTMLInputElement>document.getElementById('step3_loopendsample');
     loopbeginElement.value = timeString(this.loopBegin, g_audioBuffer.sampleRate);
+    loopbeginsampleElement.value = '' + Math.round(this.loopBegin * g_audioBuffer.sampleRate);
     loopendElement.value = timeString(this.loopEnd, g_audioBuffer.sampleRate);
+    loopendsampleElement.value = '' + Math.round(this.loopEnd * g_audioBuffer.sampleRate);
   }
   private setLoopEnd(loopEnd: number) {
     if (loopEnd <= this.loopBegin) {
@@ -836,7 +849,9 @@ class Step3 implements Step {
     let waveElement = <HTMLCanvasElement>document.getElementById('step3_wave');
     let graphElement = <HTMLCanvasElement>document.getElementById('step3_graph');
     let loopendElement = <HTMLInputElement>document.getElementById('step3_loopend');
+    let loopendsampleElement = <HTMLInputElement>document.getElementById('step3_loopendsample');
     let playElement = <HTMLInputElement>document.getElementById('step3_play');
+    let playlastElement = <HTMLInputElement>document.getElementById('step3_playlast');
     let stopElement = <HTMLInputElement>document.getElementById('step3_stop');
     loopendElement.onchange = function () {
       currentStep.setLoopEnd(+loopendElement.value);
@@ -845,7 +860,19 @@ class Step3 implements Step {
       currentStep.updateForm();
       g_stepManager.resetLaterSteps(currentStep.loopBegin, currentStep.loopEnd);
     };
+    loopendsampleElement.onchange = function () {
+      currentStep.setLoopEnd(+loopendsampleElement.value / g_audioBuffer.sampleRate);
+      currentStep.updateWave();
+      currentStep.updateGraph();
+      currentStep.updateForm();
+      g_stepManager.resetLaterSteps(currentStep.loopBegin, currentStep.loopEnd);
+    };
     playElement.onclick = function () {
+      if (currentStep.loopBegin < currentStep.loopEnd) {
+        play(currentStep.loopBegin, currentStep.loopBegin, currentStep.loopEnd);
+      }
+    };
+    playlastElement.onclick = function () {
       if (currentStep.loopBegin < currentStep.loopEnd) {
         play(currentStep.loopEnd - 3, currentStep.loopBegin, currentStep.loopEnd);
       }
@@ -993,9 +1020,13 @@ class Step4 implements Step {
   }
   private updateForm() {
     let loopbeginElement = <HTMLInputElement>document.getElementById('step4_loopbegin');
+    let loopbeginsampleElement = <HTMLInputElement>document.getElementById('step4_loopbeginsample');
     let loopendElement = <HTMLInputElement>document.getElementById('step4_loopend');
+    let loopendsampleElement = <HTMLInputElement>document.getElementById('step4_loopendsample');
     loopbeginElement.value = timeString(this.loopBegin, g_audioBuffer.sampleRate);
+    loopbeginsampleElement.value = '' + Math.round(this.loopBegin * g_audioBuffer.sampleRate);
     loopendElement.value = timeString(this.loopEnd, g_audioBuffer.sampleRate);
+    loopendsampleElement.value = '' + Math.round(this.loopEnd * g_audioBuffer.sampleRate);
   }
   private setLoopBegin(loopBegin: number) {
     if (loopBegin <= 0) {
@@ -1017,7 +1048,9 @@ class Step4 implements Step {
     let waveElement = <HTMLCanvasElement>document.getElementById('step4_wave');
     let graphElement = <HTMLCanvasElement>document.getElementById('step4_graph');
     let loopbeginElement = <HTMLInputElement>document.getElementById('step4_loopbegin');
+    let loopbeginsampleElement = <HTMLInputElement>document.getElementById('step4_loopbeginsample');
     let playElement = <HTMLInputElement>document.getElementById('step4_play');
+    let playlastElement = <HTMLInputElement>document.getElementById('step4_playlast');
     let stopElement = <HTMLInputElement>document.getElementById('step4_stop');
     loopbeginElement.onchange = function () {
       currentStep.setLoopBegin(+loopbeginElement.value);
@@ -1026,7 +1059,19 @@ class Step4 implements Step {
       currentStep.updateForm();
       g_stepManager.resetLaterSteps(currentStep.loopBegin, currentStep.loopEnd);
     };
+    loopbeginsampleElement.onchange = function () {
+      currentStep.setLoopBegin(+loopbeginsampleElement.value / g_audioBuffer.sampleRate);
+      currentStep.updateWave();
+      currentStep.updateGraph();
+      currentStep.updateForm();
+      g_stepManager.resetLaterSteps(currentStep.loopBegin, currentStep.loopEnd);
+    };
     playElement.onclick = function () {
+      if (currentStep.loopBegin < currentStep.loopEnd) {
+        play(currentStep.loopBegin, currentStep.loopBegin, currentStep.loopEnd);
+      }
+    };
+    playlastElement.onclick = function () {
       if (currentStep.loopBegin < currentStep.loopEnd) {
         play(currentStep.loopEnd - 3, currentStep.loopBegin, currentStep.loopEnd);
       }
