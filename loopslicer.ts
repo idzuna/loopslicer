@@ -389,6 +389,7 @@ let g_configWindowSize = 32;
 let g_configSnapDistance = 32;
 let g_configSseThreshold = 0.0001;
 let g_configDecimationRatio = 1;
+let g_configSliceWindow = [0.4, 0.2, 0.2, 0.2];
 
 let g_audioSource = <AudioBufferSourceNode>null;
 let g_audioBuffer = <AudioBuffer>null;
@@ -1080,15 +1081,23 @@ class Step4 implements Step {
     waveElement.onmousemove = graphElement.onmousemove = function (e) {
       currentStep.updateWave();
       currentStep.updateGraph();
+      let x = e.offsetX * g_configGraphTimescale;
+      let left = Math.max(0, x - g_configGraphTimescale * g_configSnapDistance);
+      let right = Math.min(currentStep.errorTable.length - 1, x + g_configGraphTimescale * g_configSnapDistance);
+      let iMin = searchMin(currentStep.errorTable.slice(left, right)) + left;
       let ctxWave = waveElement.getContext('2d');
       ctxWave.fillStyle = 'white';
-      ctxWave.fillRect(e.offsetX, 0, 1, waveElement.height);
+      ctxWave.fillRect(iMin / g_configGraphTimescale, 0, 1, waveElement.height);
       let ctxGraph = graphElement.getContext('2d');
       ctxGraph.fillStyle = 'white';
-      ctxGraph.fillRect(e.offsetX, 0, 1, graphElement.height);
+      ctxGraph.fillRect(iMin / g_configGraphTimescale, 0, 1, graphElement.height);
     };
     waveElement.onclick = graphElement.onclick = function (e) {
-      currentStep.setLoopBegin(e.offsetX * g_configGraphTimescale / g_audioBuffer.sampleRate);
+      let x = e.offsetX * g_configGraphTimescale;
+      let left = Math.max(0, x - g_configGraphTimescale * g_configSnapDistance);
+      let right = Math.min(currentStep.errorTable.length - 1, x + g_configGraphTimescale * g_configSnapDistance);
+      let iMin = searchMin(currentStep.errorTable.slice(left, right)) + left;
+      currentStep.setLoopBegin(iMin / g_audioBuffer.sampleRate);
       currentStep.updateWave();
       currentStep.updateGraph();
       currentStep.updateForm();
@@ -1104,10 +1113,14 @@ class Step4 implements Step {
       let iLoopInterval = currentStep.iLoopInterval;
       let errorTable = new Float32Array(g_audioBuffer.length - iLoopInterval);
       for (let i = 0; i < errorTable.length; i++) {
-        let d = g_mixedData[i] - g_mixedData[iLoopInterval + i];
-        errorTable[i] = d * d;
+        let dd = 0;
+        for (let j = 0; j < g_configSliceWindow.length; j++) {
+          let d = g_mixedData[i + j] - g_mixedData[iLoopInterval + i + j];
+          dd += d * d * g_configSliceWindow[j];
+        }
+        errorTable[i] = dd;
       }
-      currentStep.graphImage = plotGraph(errorTable, 256, g_configGraphTimescale, 'average', 0, 2);
+      currentStep.graphImage = plotGraph(errorTable, 256, g_configGraphTimescale, 'min', 0, 2);
       currentStep.errorTable = errorTable;
       currentStep.valid = true;
     }
