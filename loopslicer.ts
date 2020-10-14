@@ -385,10 +385,10 @@ function timeString(time: number, sampleRate: number) {
 }
 
 let g_configGraphTimescale = 4096;
-let g_configWindowSize = 32;
+let g_configWindowSize = 1024;
 let g_configSnapDistance = 32;
-let g_configSseThreshold = 0.0001;
-let g_configDecimationRatio = 1;
+let g_configSseThreshold = 0.001;
+let g_configDecimationRatio = 32;
 let g_configSliceWindow = [0.4, 0.2, 0.2, 0.2];
 
 let g_audioSource = <AudioBufferSourceNode>null;
