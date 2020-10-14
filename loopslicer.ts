@@ -385,10 +385,11 @@ function timeString(time: number, sampleRate: number) {
 }
 
 let g_configGraphTimescale = 4096;
-let g_configWindowSize = 32;
+let g_configWindowSize = 1024;
 let g_configSnapDistance = 32;
-let g_configSseThreshold = 0.0001;
-let g_configDecimationRatio = 1;
+let g_configSseThreshold = 0.001;
+let g_configDecimationRatio = 32;
+let g_configSliceWindow = [0.4, 0.2, 0.2, 0.2];
 
 let g_audioSource = <AudioBufferSourceNode>null;
 let g_audioBuffer = <AudioBuffer>null;
@@ -701,7 +702,9 @@ class Step2 implements Step {
   }
   private updateForm() {
     let loopbeginElement = <HTMLInputElement>document.getElementById('step2_loopbegin');
+    let loopbeginsampleElement = <HTMLInputElement>document.getElementById('step2_loopbeginsample');
     loopbeginElement.value = timeString(this.loopBegin, g_audioBuffer.sampleRate);
+    loopbeginsampleElement.value = '' + Math.round(this.loopBegin * g_audioBuffer.sampleRate);
   }
   private setLoopBegin(loopBegin: number) {
     let iBegin = Math.round(loopBegin * g_audioBuffer.sampleRate);
@@ -712,6 +715,7 @@ class Step2 implements Step {
     let currentStep = this;
     let waveElement = <HTMLCanvasElement>document.getElementById('step2_wave');
     let loopbeginElement = <HTMLInputElement>document.getElementById('step2_loopbegin');
+    let loopbeginsampleElement = <HTMLInputElement>document.getElementById('step2_loopbeginsample');
     let playElement = <HTMLInputElement>document.getElementById('step2_play');
     let stopElement = <HTMLInputElement>document.getElementById('step2_stop');
     let openadvancedElement = <HTMLAnchorElement>document.getElementById('step2_openadvanced');
@@ -721,6 +725,12 @@ class Step2 implements Step {
     let decimationratioElement = <HTMLInputElement>document.getElementById('step2_decimationratio');
     loopbeginElement.onchange = function () {
       currentStep.setLoopBegin(+loopbeginElement.value);
+      currentStep.updateWave();
+      currentStep.updateForm();
+      g_stepManager.resetLaterSteps(currentStep.loopBegin, currentStep.loopBegin + 1 / g_audioBuffer.sampleRate);
+    };
+    loopbeginsampleElement.onchange = function () {
+      currentStep.setLoopBegin(+loopbeginsampleElement.value / g_audioBuffer.sampleRate);
       currentStep.updateWave();
       currentStep.updateForm();
       g_stepManager.resetLaterSteps(currentStep.loopBegin, currentStep.loopBegin + 1 / g_audioBuffer.sampleRate);
@@ -815,9 +825,13 @@ class Step3 implements Step {
   }
   private updateForm() {
     let loopbeginElement = <HTMLInputElement>document.getElementById('step3_loopbegin');
+    let loopbeginsampleElement = <HTMLInputElement>document.getElementById('step3_loopbeginsample');
     let loopendElement = <HTMLInputElement>document.getElementById('step3_loopend');
+    let loopendsampleElement = <HTMLInputElement>document.getElementById('step3_loopendsample');
     loopbeginElement.value = timeString(this.loopBegin, g_audioBuffer.sampleRate);
+    loopbeginsampleElement.value = '' + Math.round(this.loopBegin * g_audioBuffer.sampleRate);
     loopendElement.value = timeString(this.loopEnd, g_audioBuffer.sampleRate);
+    loopendsampleElement.value = '' + Math.round(this.loopEnd * g_audioBuffer.sampleRate);
   }
   private setLoopEnd(loopEnd: number) {
     if (loopEnd <= this.loopBegin) {
@@ -836,7 +850,9 @@ class Step3 implements Step {
     let waveElement = <HTMLCanvasElement>document.getElementById('step3_wave');
     let graphElement = <HTMLCanvasElement>document.getElementById('step3_graph');
     let loopendElement = <HTMLInputElement>document.getElementById('step3_loopend');
+    let loopendsampleElement = <HTMLInputElement>document.getElementById('step3_loopendsample');
     let playElement = <HTMLInputElement>document.getElementById('step3_play');
+    let playlastElement = <HTMLInputElement>document.getElementById('step3_playlast');
     let stopElement = <HTMLInputElement>document.getElementById('step3_stop');
     loopendElement.onchange = function () {
       currentStep.setLoopEnd(+loopendElement.value);
@@ -845,7 +861,19 @@ class Step3 implements Step {
       currentStep.updateForm();
       g_stepManager.resetLaterSteps(currentStep.loopBegin, currentStep.loopEnd);
     };
+    loopendsampleElement.onchange = function () {
+      currentStep.setLoopEnd(+loopendsampleElement.value / g_audioBuffer.sampleRate);
+      currentStep.updateWave();
+      currentStep.updateGraph();
+      currentStep.updateForm();
+      g_stepManager.resetLaterSteps(currentStep.loopBegin, currentStep.loopEnd);
+    };
     playElement.onclick = function () {
+      if (currentStep.loopBegin < currentStep.loopEnd) {
+        play(currentStep.loopBegin, currentStep.loopBegin, currentStep.loopEnd);
+      }
+    };
+    playlastElement.onclick = function () {
       if (currentStep.loopBegin < currentStep.loopEnd) {
         play(currentStep.loopEnd - 3, currentStep.loopBegin, currentStep.loopEnd);
       }
@@ -993,9 +1021,13 @@ class Step4 implements Step {
   }
   private updateForm() {
     let loopbeginElement = <HTMLInputElement>document.getElementById('step4_loopbegin');
+    let loopbeginsampleElement = <HTMLInputElement>document.getElementById('step4_loopbeginsample');
     let loopendElement = <HTMLInputElement>document.getElementById('step4_loopend');
+    let loopendsampleElement = <HTMLInputElement>document.getElementById('step4_loopendsample');
     loopbeginElement.value = timeString(this.loopBegin, g_audioBuffer.sampleRate);
+    loopbeginsampleElement.value = '' + Math.round(this.loopBegin * g_audioBuffer.sampleRate);
     loopendElement.value = timeString(this.loopEnd, g_audioBuffer.sampleRate);
+    loopendsampleElement.value = '' + Math.round(this.loopEnd * g_audioBuffer.sampleRate);
   }
   private setLoopBegin(loopBegin: number) {
     if (loopBegin <= 0) {
@@ -1017,7 +1049,9 @@ class Step4 implements Step {
     let waveElement = <HTMLCanvasElement>document.getElementById('step4_wave');
     let graphElement = <HTMLCanvasElement>document.getElementById('step4_graph');
     let loopbeginElement = <HTMLInputElement>document.getElementById('step4_loopbegin');
+    let loopbeginsampleElement = <HTMLInputElement>document.getElementById('step4_loopbeginsample');
     let playElement = <HTMLInputElement>document.getElementById('step4_play');
+    let playlastElement = <HTMLInputElement>document.getElementById('step4_playlast');
     let stopElement = <HTMLInputElement>document.getElementById('step4_stop');
     loopbeginElement.onchange = function () {
       currentStep.setLoopBegin(+loopbeginElement.value);
@@ -1026,7 +1060,19 @@ class Step4 implements Step {
       currentStep.updateForm();
       g_stepManager.resetLaterSteps(currentStep.loopBegin, currentStep.loopEnd);
     };
+    loopbeginsampleElement.onchange = function () {
+      currentStep.setLoopBegin(+loopbeginsampleElement.value / g_audioBuffer.sampleRate);
+      currentStep.updateWave();
+      currentStep.updateGraph();
+      currentStep.updateForm();
+      g_stepManager.resetLaterSteps(currentStep.loopBegin, currentStep.loopEnd);
+    };
     playElement.onclick = function () {
+      if (currentStep.loopBegin < currentStep.loopEnd) {
+        play(currentStep.loopBegin, currentStep.loopBegin, currentStep.loopEnd);
+      }
+    };
+    playlastElement.onclick = function () {
       if (currentStep.loopBegin < currentStep.loopEnd) {
         play(currentStep.loopEnd - 3, currentStep.loopBegin, currentStep.loopEnd);
       }
@@ -1035,15 +1081,23 @@ class Step4 implements Step {
     waveElement.onmousemove = graphElement.onmousemove = function (e) {
       currentStep.updateWave();
       currentStep.updateGraph();
+      let x = e.offsetX * g_configGraphTimescale;
+      let left = Math.max(0, x - g_configGraphTimescale * g_configSnapDistance);
+      let right = Math.min(currentStep.errorTable.length - 1, x + g_configGraphTimescale * g_configSnapDistance);
+      let iMin = searchMin(currentStep.errorTable.slice(left, right)) + left;
       let ctxWave = waveElement.getContext('2d');
       ctxWave.fillStyle = 'white';
-      ctxWave.fillRect(e.offsetX, 0, 1, waveElement.height);
+      ctxWave.fillRect(iMin / g_configGraphTimescale, 0, 1, waveElement.height);
       let ctxGraph = graphElement.getContext('2d');
       ctxGraph.fillStyle = 'white';
-      ctxGraph.fillRect(e.offsetX, 0, 1, graphElement.height);
+      ctxGraph.fillRect(iMin / g_configGraphTimescale, 0, 1, graphElement.height);
     };
     waveElement.onclick = graphElement.onclick = function (e) {
-      currentStep.setLoopBegin(e.offsetX * g_configGraphTimescale / g_audioBuffer.sampleRate);
+      let x = e.offsetX * g_configGraphTimescale;
+      let left = Math.max(0, x - g_configGraphTimescale * g_configSnapDistance);
+      let right = Math.min(currentStep.errorTable.length - 1, x + g_configGraphTimescale * g_configSnapDistance);
+      let iMin = searchMin(currentStep.errorTable.slice(left, right)) + left;
+      currentStep.setLoopBegin(iMin / g_audioBuffer.sampleRate);
       currentStep.updateWave();
       currentStep.updateGraph();
       currentStep.updateForm();
@@ -1059,10 +1113,14 @@ class Step4 implements Step {
       let iLoopInterval = currentStep.iLoopInterval;
       let errorTable = new Float32Array(g_audioBuffer.length - iLoopInterval);
       for (let i = 0; i < errorTable.length; i++) {
-        let d = g_mixedData[i] - g_mixedData[iLoopInterval + i];
-        errorTable[i] = d * d;
+        let dd = 0;
+        for (let j = 0; j < g_configSliceWindow.length; j++) {
+          let d = g_mixedData[i + j] - g_mixedData[iLoopInterval + i + j];
+          dd += d * d * g_configSliceWindow[j];
+        }
+        errorTable[i] = dd;
       }
-      currentStep.graphImage = plotGraph(errorTable, 256, g_configGraphTimescale, 'average', 0, 2);
+      currentStep.graphImage = plotGraph(errorTable, 256, g_configGraphTimescale, 'min', 0, 2);
       currentStep.errorTable = errorTable;
       currentStep.valid = true;
     }
